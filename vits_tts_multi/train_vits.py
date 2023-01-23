@@ -62,7 +62,7 @@ config = VitsConfig(
     num_loader_workers=6,
     num_eval_loader_workers=3,
     run_eval=True,
-    precompute_num_workers=6,
+    # precompute_num_workers=6,
     test_delay_epochs=-1,
     epochs=1000,
     text_cleaner="multilingual_cleaners",
@@ -80,7 +80,7 @@ config = VitsConfig(
     test_sentences=test_sentences,
     output_path=OUTPUT_PATH,
     datasets=[dataset_config],
-    use_speaker_embedding=True,
+    # use_speaker_embedding=True,
 
     
     
@@ -127,8 +127,9 @@ SPEAKER_ENCODER_MODEL_PATH = "/home/egert/TTS-train/speakers/output/run-January-
 speaker_manager = SpeakerManager()
 speaker_manager.set_ids_from_data(train_samples + eval_samples, parse_key="speaker_name")
 
-config.num_speakers = speaker_manager.num_speakers
+# config.num_speakers = speaker_manager.num_speakers
 config.model_args.num_speakers = speaker_manager.num_speakers
+config.model_args.use_speaker_embedding = speaker_manager.num_speakers > 1
 print("SPEAKER_COUNT:", speaker_manager.num_speakers)
 
 # init model
