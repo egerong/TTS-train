@@ -50,19 +50,26 @@ dataset_config = BaseDatasetConfig(
     path="/home/egert/korpused/16kHz/"
 )
 audio_config = VitsAudioConfig(
-    sample_rate=16000, win_length=1024, hop_length=256, num_mels=80, mel_fmin=0, mel_fmax=None
+    sample_rate=16000,
+    win_length=1024,
+    hop_length=256,
+    num_mels=80,
+    mel_fmin=0,
+    mel_fmax=8000
+
+
 )
 
 config = VitsConfig(
     audio=audio_config,
-    start_by_longest=True,
+    # start_by_longest=True,
     batch_size=16,
     eval_batch_size=8,
     batch_group_size=5,
-    num_loader_workers=6,
-    num_eval_loader_workers=3,
+    num_loader_workers=12,
+    num_eval_loader_workers=6,
     run_eval=True,
-    # precompute_num_workers=6,
+    precompute_num_workers=12,
     test_delay_epochs=-1,
     epochs=1000,
     text_cleaner="multilingual_cleaners",
@@ -74,15 +81,25 @@ config = VitsConfig(
     print_eval=True,
     mixed_precision=True,
     min_text_len=0,
-    max_text_len=500,
+    max_text_len=400,
     min_audio_len=0,
     max_audio_len=16000 * 30,
     test_sentences=test_sentences,
     output_path=OUTPUT_PATH,
     datasets=[dataset_config],
     # use_speaker_embedding=True,
-
     
+
+    characters=CharactersConfig(
+        characters_class="TTS.tts.utils.text.characters.IPAPhonemes",
+  
+        pad="<PAD>",
+        eos="<EOS>",
+        bos="<BOS>",
+        blank="<BLNK>",
+        characters="^iy\u0268\u0289\u026fu\u026a\u028f\u028ae\u00f8\u0258\u0259\u0275\u0264o\u025b\u0153\u025c\u025e\u028c\u0254\u00e6\u0250a\u0276\u0251\u0252\u1d7b\u0298\u0253\u01c0\u0257\u01c3\u0284\u01c2\u0260\u01c1\u029bpbtd\u0288\u0256c\u025fk\u0261q\u0262\u0294\u0274\u014b\u0272\u0273n\u0271m\u0299r\u0280\u2c71\u027e\u027d\u0278\u03b2fv\u03b8\u00f0sz\u0283\u0292\u0282\u0290\u00e7\u029dx\u0263\u03c7\u0281\u0127\u0295h\u0266\u026c\u026e\u028b\u0279\u027bj\u0270l\u026d\u028e\u029f\u02c8\u02cc\u02d0\u02d1\u028dw\u0265\u029c\u02a2\u02a1\u0255\u0291\u027a\u0267\u02b2\u025a\u02de\u026b",
+        punctuations="!'(),-.:;? …",
+    ),
     
     # characters=CharactersConfig(
     #     characters_class="TTS.tts.models.vits.VitsCharacters",
@@ -90,9 +107,8 @@ config = VitsConfig(
     #     eos="<EOS>",
     #     bos="<BOS>",
     #     blank="<BLNK>",
-    #     characters="!¡'(),-.:;¿? abcdefghijklmnopqrstuvwxyzõäöüšž‘’‚“`”„…–",
+    #     characters="!¡'(),-.:;¿? abcdefghijklmnopqrstuvwxyzõäöüšž‘’‚“`”„…–^",
     #     punctuations="!¡'(),-.:;¿? ",
-    #     phonemes=None
     # ),
     cudnn_benchmark=False,
 )
@@ -101,7 +117,9 @@ config = VitsConfig(
 # Audio processor is used for feature extraction and audio I/O.
 # It mainly serves to the dataloader and the training loggers.
 ap = AudioProcessor.init_from_config(config)
-ap.resample = True
+ap.do_trim_silence = True
+ap.ref_level_db = 30
+
 
 # INITIALIZE THE TOKENIZER
 # Tokenizer is used to convert text to sequences of token IDs.
