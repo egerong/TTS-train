@@ -11,7 +11,7 @@ from TTS.tts.datasets import load_tts_samples
 from TTS.tts.models.vits import CharactersConfig, Vits, VitsArgs, VitsAudioConfig
 from TTS.utils.downloaders import download_vctk
 
-torch.set_num_threads(24)
+torch.set_num_threads(12)
 
 # pylint: disable=W0105
 """
@@ -24,14 +24,15 @@ torch.set_num_threads(24)
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 
 # Name of the run for the Trainer
-RUN_NAME = "YourTTS"
+RUN_NAME = "YourTTS_ET"
 
 # Path where you want to save the models outputs (configs, checkpoints and tensorboard logs)
 OUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")  # "/raid/coqui/Checkpoints/original-YourTTS/"
 
 # If you want to do transfer learning and speedup your training you can set here the path to the original YourTTS model
 RESTORE_PATH = None
-RESTORE_PATH = "/home/egert/.local/share/tts/tts_models--multilingual--multi-dataset--your_tts/model_file.pth"
+#RESTORE_PATH = "/home/egert/.local/share/tts/tts_models--multilingual--multi-dataset--your_tts/model_file.pth"
+#RESTORE_PATH = "/home/egert/TTS-train/yourtts/output/YourTTS_ET-February-20-2023_01+37PM-98c23b4/checkpoint_15000.pth"
 
 # This paramter is usefull to debug, it skips the training epochs and just do the evaluation  and produce the test sentences
 SKIP_TRAIN_EPOCH = False
@@ -51,33 +52,33 @@ VCTK_DOWNLOAD_PATH = os.path.join(CURRENT_PATH, "VCTK")
 # Define the number of threads used during the audio resampling
 NUM_RESAMPLE_THREADS = 10
 # Check if VCTK dataset is not already downloaded, if not download it
-if not os.path.exists(VCTK_DOWNLOAD_PATH):
-    print(">>> Downloading VCTK dataset:")
-    download_vctk(VCTK_DOWNLOAD_PATH)
-    resample_files(VCTK_DOWNLOAD_PATH, SAMPLE_RATE, file_ext="flac", n_jobs=NUM_RESAMPLE_THREADS)
+# if not os.path.exists(VCTK_DOWNLOAD_PATH):
+#     print(">>> Downloading VCTK dataset:")
+#     download_vctk(VCTK_DOWNLOAD_PATH)
+#     resample_files(VCTK_DOWNLOAD_PATH, SAMPLE_RATE, file_ext="flac", n_jobs=NUM_RESAMPLE_THREADS)
 
 # init configs
-vctk_config = BaseDatasetConfig(
-    formatter="vctk",
-    dataset_name="vctk",
-    meta_file_train="",
-    meta_file_val="",
-    path=VCTK_DOWNLOAD_PATH,
-    language="en",
-    ignored_speakers=[
-        "p261",
-        "p225",
-        "p294",
-        "p347",
-        "p238",
-        "p234",
-        "p248",
-        "p335",
-        "p245",
-        "p326",
-        "p302",
-    ],  # Ignore the test speakers to full replicate the paper experiment
-)
+# vctk_config = BaseDatasetConfig(
+#     formatter="vctk",
+#     dataset_name="vctk",
+#     meta_file_train="",
+#     meta_file_val="",
+#     path=VCTK_DOWNLOAD_PATH,
+#     language="en",
+#     ignored_speakers=[
+#         "p261",
+#         "p225",
+#         "p294",
+#         "p347",
+#         "p238",
+#         "p234",
+#         "p248",
+#         "p335",
+#         "p245",
+#         "p326",
+#         "p302",
+#     ],  # Ignore the test speakers to full replicate the paper experiment
+# )
 
 dataset_config = BaseDatasetConfig(
     formatter="koneveeb",
@@ -87,7 +88,7 @@ dataset_config = BaseDatasetConfig(
 )
 
 # Add here all datasets configs, in our case we just want to train with the VCTK dataset then we need to add just VCTK. Note: If you want to added new datasets just added they here and it will automatically compute the speaker embeddings (d-vectors) for this new dataset :)
-DATASETS_CONFIG_LIST = [vctk_config, dataset_config]
+DATASETS_CONFIG_LIST = [dataset_config]
 
 ### Extract speaker embeddings
 SPEAKER_ENCODER_CHECKPOINT_PATH = (
@@ -100,7 +101,7 @@ D_VECTOR_FILES = []  # List of speaker embeddings/d-vectors to be used during th
 # Iterates all the dataset configs checking if the speakers embeddings are already computated, if not compute it
 for dataset_conf in DATASETS_CONFIG_LIST:
     # Check if the embeddings weren't already computed, if not compute it
-    embeddings_file = os.path.join(dataset_conf.path, "speakers.pth")
+    embeddings_file = os.path.join(dataset_conf.path, "speakers_aggr.pth")
     if not os.path.isfile(embeddings_file):
         print(f">>> Computing the speaker embeddings for the {dataset_conf.dataset_name} dataset")
         compute_embeddings(
@@ -141,10 +142,10 @@ model_args = VitsArgs(
     speaker_encoder_config_path=SPEAKER_ENCODER_CONFIG_PATH,
     resblock_type_decoder="2",  # On the paper, we accidentally trained the YourTTS using ResNet blocks type 2, if you like you can use the ResNet blocks type 1 like the VITS model
     # Usefull parameters to enable the Speaker Consistency Loss (SCL) discribed in the paper
-    use_speaker_encoder_as_loss=True,
+    #use_speaker_encoder_as_loss=True,
     # Usefull parameters to the enable multilingual training
-    use_language_embedding=True,
-    embedded_language_dim=4,
+    #use_language_embedding=True,
+    #embedded_language_dim=4,
     
 )
 
@@ -155,7 +156,7 @@ config = VitsConfig(
     run_name=RUN_NAME,
     project_name="YourTTS",
     run_description="""
-            - Original YourTTS trained using VCTK dataset
+            - YourTTS trained using Koneveeb dataset
         """,
     dashboard_logger="tensorboard",
     logger_uri=None,
@@ -174,22 +175,22 @@ config = VitsConfig(
     target_loss="loss_1",
     print_eval=False,
     use_phonemes=False,
-    #phonemizer="multi_phonemizer",
+    #phoneme_language="et",
     #phoneme_cache_path=os.path.join(OUT_PATH, "phoneme_cache"),
     compute_input_seq_cache=True,
     add_blank=True,
     text_cleaner="multilingual_cleaners",
     characters=CharactersConfig(
         characters_class="TTS.tts.models.vits.VitsCharacters",
-        pad="_",
-        eos="&",
-        bos="*",
-        blank=None,
-        characters="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\u00af\u00b7\u00df\u00e0\u00e1\u00e2\u00e3\u00e4\u00e6\u00e7\u00e8\u00e9\u00ea\u00eb\u00ec\u00ed\u00ee\u00ef\u00f1\u00f2\u00f3\u00f4\u00f5\u00f6\u00f9\u00fa\u00fb\u00fc\u00ff\u0101\u0105\u0107\u0113\u0119\u011b\u012b\u0131\u0142\u0144\u014d\u0151\u0153\u015b\u016b\u0171\u017a\u017c\u01ce\u01d0\u01d2\u01d4\u0430\u0431\u0432\u0433\u0434\u0435\u0436\u0437\u0438\u0439\u043a\u043b\u043c\u043d\u043e\u043f\u0440\u0441\u0442\u0443\u0444\u0445\u0446\u0447\u0448\u0449\u044a\u044b\u044c\u044d\u044e\u044f\u0451\u0454\u0456\u0457\u0491\u2013!'(),-.:;? ",
-        punctuations="!'(),-.:;? ",
+        pad="<PAD>",
+        eos="<EOS>",
+        bos="<BOS>",
+        blank="<BLNK>",
+        characters="!¡'(),-–.:;¿? abcdefghijklmnopqrstuvwxyzõäöüšž",
+        punctuations="!'(),-–.:;? ‘’‚“`”„…",
         phonemes="",
-        is_unique=True,
-        is_sorted=True,
+        # is_unique=True,
+        # is_sorted=True,
     ),
     precompute_num_workers=12,
     start_by_longest=True,
@@ -198,63 +199,136 @@ config = VitsConfig(
     max_audio_len=SAMPLE_RATE * MAX_AUDIO_LEN_IN_SECONDS,
     mixed_precision=False,
     test_sentences=[
+        ["Ongi tõestatud, et inimene on tööl palju produktiivsem, kui talle antakse ka aega oma kodustega olla, kui ta ei pea liigselt üle töötama.Kõik sellised asjad."],
         [
-            "It took me quite a long time to develop a voice, and now that I have it I'm not going to be silent.",
-            "VCTK_p277",
+            "Ja ka oskus kuulata sageli ju aitab.",
+            "indrek",
             None,
-            "en",
+            "et",
         ],
         [
-            "Be a voice, not an echo.",
-            "VCTK_p239",
+            "Vähemalt ma arvan, et mures olijat aitab väga palju see, kui keegi teda lihtsalt kuulab ja on olemas.",
+            "indrek",
             None,
-            "en",
+            "et",
         ],
         [
-            "I'm sorry Dave. I'm afraid I can't do that.",
-            "VCTK_p258",
+            "Aga inimesed ei oska seda teha sageli.",
+            "indrek",
             None,
-            "en",
+            "et",
         ],
         [
-            "This cake is great. It's so delicious and moist.",
-            "VCTK_p244",
+            "Mul on tunne, et tegelikult me kõik vajame mingi hetk seda kohta, kus me saamegi vastutuse ära anda.",
+            "kersti",
             None,
-            "en",
-        ],
-        [
-            "Prior to November 22, 1963.",
-            "VCTK_p305",
-            None,
-            "en",
+            "et",
         ],
         [
             "See ei ole tegelikult üldse halb.",
-            "peeter_jutustav",
+            "kylli",
             None,
             "et",
         ],
         [
             "See on osa elust ja me igaüks vajame seda.",
-            "peeter_jutustav",
+            "kylli",
             None,
             "et",
         ],
         [
             "Mulle meeldib ka otsustada, mulle meeldib ka vastutada.",
-            "peeter_jutustav",
+            "liivika",
             None,
             "et",
         ],
         [
             "Mul ei ole midagi selle vastu, aga vahepeal on tunne, et ma tahan, et keegi lihtsalt minu eest mingid asjad ära teeks.",
-            "peeter_jutustav",
+            "liivika",
             None,
             "et",
         ],
         [
             "Sest tegelikult, kui ma vaatan praegu tagasi, meil on nii ägedad kaks kuud olnud selles maamajakeses.",
-            "peeter_jutustav",
+            "peeter",
+            None,
+            "et",
+        ],
+        [
+            "Teeme kaminat, ja me ei vaata enam nii palju telekat.",
+            "peeter",
+            None,
+            "et",
+        ],
+        [
+            "ee noh kindlasti sina oled üks väheseid ee pigem väheseid inimesi, kes oskab kuulata ja oskab seda nii-öelda mingisugust nõu anda või lohutust anda.",
+            "peeter",
+            None,
+            "et",
+        ],
+        [
+            "Aga paljud ei oskagi, nad jäävad kohmetuks.",
+            "tambet",
+            None,
+            "et",
+        ],
+        [
+            "Aga kui nüüd ee mõelda vananemise peale, siis ee noh, me muutume aasta-aastalt vanemaks, targemaks ka muidugi.",
+            "tambet",
+            None,
+            "et",
+        ],
+        [
+            "Ilusamaks ka, ma loodan.",
+            "tambet",
+            None,
+            "et",
+        ],
+        [
+            "ee mina küll tunnen, et ma nagu, mõnes mõttes lähen aastatega paremaks.",
+            "indrek",
+            None,
+            "et",
+        ],
+        [
+            "ee ja siis mul oli küll muide see mõte et ee.",
+            "indrek",
+            None,
+            "et",
+        ],
+        [
+            "Ma olen alati mõelnud, et ma tahaks ee seda inimest nagu rohkem ee tunda, või nagu saanud tunda tol hetkel.",
+            "indrek",
+            None,
+            "et",
+        ],
+        [
+            "Et selles suhtes on, see kirjaidee on küll noh päris ee tore.",
+            "kylli",
+            None,
+            "et",
+        ],
+        [
+            "Ta rääkis täpselt seda, mida nagu mina olin nagu mõelnud, aga tema lihtsalt pani selle palju paremini nagu sõnadesse ja oskas seda nii ilusasti nagu serveerida.",
+            "kylli",
+            None,
+            "et",
+        ],
+        [
+            "Ma siiamaani mõtlen selle peale.",
+            "liivika",
+            None,
+            "et",
+        ],
+        [
+            "Me oleme teineteisele väga palju praktilisi asju ka kinkinud ja ja teinud ee siin-seal mingeid ee selliseid väikseid üllatusi.",
+            "liivika",
+            None,
+            "et",
+        ],
+        [
+            "Ja ja need on ka vajalikud.",
+            "peeter",
             None,
             "et",
         ],
@@ -262,7 +336,7 @@ config = VitsConfig(
     # Enable the weighted sampler
     use_weighted_sampler=True,
     # Ensures that all speakers are seen in the training batch equally no matter how many samples each speaker has
-    weighted_sampler_attrs={"speaker_name": 1.0, "language": 0.8},
+    weighted_sampler_attrs={"speaker_name": 0.5},
     weighted_sampler_multipliers={},
     # It defines the Speaker Consistency Loss (SCL) α to 9 like the paper
     speaker_encoder_loss_alpha=9.0,
